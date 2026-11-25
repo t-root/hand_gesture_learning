@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hand Gesture Learning</title>
+  <style>
+    :root {
+      --bg: #050607;
+      --panel: #0a0d10;
+      --border: rgba(255,255,255,0.18);
+      --text: #e8e8e8;
+      --muted: #9aa0a6;
+      --accent: #ffffff;
+      --danger: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    body {
+      padding: 0.7vw;
+      scrollbar-gutter: stable;
+    }
+
+    .app {
+      width: 100%;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 0.7vw;
+      min-height: 0;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8vw;
+      border: 0.08vw solid var(--border);
+      background: var(--panel);
+      padding: 0.75vw 0.9vw;
+      text-transform: uppercase;
+      letter-spacing: 0.08vw;
+    }
+
+    .notice {
+      border: 0.08vw solid var(--border);
+      background: rgba(255,255,255,0.03);
+      padding: 0.55vw 0.8vw;
+      font-size: clamp(0.625rem, 0.7vw, 0.8125rem);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .notice.good { color: #fff; border-color: #fff; }
+    .notice.warn { color: #fff; border-color: #fff; border-style: dashed; }
+
+    .program-status {
+      margin-top: 0.5vw;
+      margin-bottom: 0.5vw;
+    }
+
+    .title { display: grid; gap: 0.2vw; }
+    .title h1 {
+      margin: 0;
+      font-size: clamp(1rem, 1.35vw, 1.5rem);
+      font-weight: 700;
+    }
+    .title div {
+      color: var(--muted);
+      font-size: clamp(0.625rem, 0.7vw, 0.8125rem);
+    }
+
+    .tab, button, input, select {
+      border: 0.08vw solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    input[type='checkbox'], input[type='radio'] {
+      width: 0.95vw;
+      height: 0.95vw;
+      min-width: 12px;
+      min-height: 12px;
+      accent-color: #ffffff;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .tab, button {
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+
+    button:hover, .tab:hover, .tile:hover { border-color: #fff; color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.btn-on {
+      border-color: #fff;
+      color: #050607;
+      background: #fff;
+    }
+
+    .main {
+      width: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(15.625vw, 25vw) minmax(17.5vw, 30vw) minmax(17.5vw, 1fr);
+      gap: 0.7vw;
+      align-items: start;
+    }
+
+    .left, .center, .right {
+      min-height: 0;
+      display: grid;
+      gap: 0.7vw;
+      align-content: start;
+    }
+
+    .left { grid-auto-rows: auto; }
+    .center { grid-auto-rows: auto; }
+    .center-model-stack {
+      display: grid;
+      gap: 0.7vw;
+      width: 100%;
+      justify-items: center;
+    }
+    .center-model-stack > .card {
+      width: 100%;
+      max-width: min(100%, 28rem);
+    }
+    .center-prediction-strip {
+      width: 100%;
+      max-width: min(100%, 28rem);
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .right { grid-template-rows: auto auto auto auto auto; padding-right: 0.15vw; }
+
+    .card {
+      border: 0.08vw solid var(--border);
+      background: var(--panel);
+      padding: 0.7vw;
+      min-height: 0;
+    }
+
+    .card h2 {
+      margin: 0 0 0.5vw;
+      font-size: clamp(0.6875rem, 0.9vw, 1rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05vw;
+    }
+
+    .field { display: grid; gap: 0.25vw; margin-bottom: 0.5vw; }
+    .field label {
+      font-size: clamp(0.5625rem, 0.62vw, 0.75rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+
+    input, button, select {
+      width: 100%;
+      padding: 0.55vw 0.7vw;
+      font-size: clamp(0.625rem, 0.72vw, 0.8125rem);
+    }
+
+    .row { display: flex; gap: 0.5vw; flex-wrap: wrap; }
+    .row > * { flex: 1 1 0; min-width: 0; }
+    .group { display: grid; gap: 0.5vw; }
+    .action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5vw; }
+    .action-grid .span-2 { grid-column: 1 / -1; }
+    .inline2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5vw; }
+    .inline3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5vw; }
+
+    .status {
+      margin-top: 0.5vw;
+      border-top: 0.08vw solid var(--border);
+      padding-top: 0.5vw;
+      color: var(--muted);
+      font-size: clamp(0.625rem, 0.68vw, 0.75rem);
+      line-height: 1.35;
+      white-space: pre-wrap;
+      min-height: 2.8vw;
+      max-height: 5.2vw;
+      overflow: auto;
+    }
+
+    .hidden { display: none !important; }
+
+    .video-wrap {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border: 0.08vw solid var(--border);
+      background: #000;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+      max-height: 52vh;
+    }
+
+    video, canvas.overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center center;
+    }
+
+    video { z-index: 0; }
+
+    /* Hand skeleton: circuit style — white tones, slight glow */
+    canvas.overlay {
+      z-index: 1;
+      pointer-events: none;
+      filter: drop-shadow(0 0 0.5px #fff) drop-shadow(0 0 4px rgba(255, 255, 255, 0.28));
+    }
+
+    .overlay-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8vw;
+      border: 0.08vw solid var(--border);
+      background: var(--panel);
+      padding: 0.7vw 0.8vw;
+      min-height: 0;
+    }
+
+    .pill {
+      border: 0.08vw solid var(--border);
+      padding: 0.35vw 0.55vw;
+      font-size: clamp(0.5625rem, 0.62vw, 0.75rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+      white-space: nowrap;
+    }
+
+    .prediction {
+      font-size: clamp(1rem, 1.5vw, 1.75rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+      line-height: 1;
+    }
+
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5vw; }
+    .stat {
+      border: 0.08vw solid var(--border);
+      padding: 0.6vw;
+      min-height: 3.4vw;
+    }
+    .stat .k {
+      font-size: clamp(0.5625rem, 0.58vw, 0.6875rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+    .stat .v {
+      margin-top: 0.3vw;
+      font-size: clamp(0.75rem, 0.9vw, 1.125rem);
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .progress-wrap {
+      display: grid;
+      gap: 0.55vw;
+      padding: 0.15vw 0;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.8vw;
+      font-size: clamp(0.625rem, 0.7vw, 0.8125rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+    .progress-bar {
+      position: relative;
+      width: 100%;
+      height: 0.85vw;
+      min-height: 0.55rem;
+      border: 0.08vw solid var(--border);
+      background: rgba(0, 0, 0, 0.35);
+      box-shadow: inset 0 0.12vw 0.35vw rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #ffffff;
+      transition: width 0.22s ease;
+    }
+    .progress-steps {
+      display: flex;
+      gap: 0.25vw;
+      margin-top: 0.15vw;
+    }
+    .progress-step {
+      flex: 1;
+      height: 0.28vw;
+      min-height: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 0.04vw solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+    .progress-step-fill {
+      height: 100%;
+      width: 0%;
+      background: #ffffff;
+      transition: width 0.22s ease;
+    }
+
+    .info-grid { display: grid; gap: 0.45vw; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1vw;
+      border: 0.08vw solid var(--border);
+      padding: 0.55vw 0.7vw;
+      font-size: clamp(0.625rem, 0.72vw, 0.8125rem);
+      text-transform: uppercase;
+    }
+    .info-row span:first-child { color: var(--muted); }
+
+    .chips {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45vw;
+    }
+    .chip {
+      border: 0.08vw solid var(--border);
+      padding: 0.5vw 0.65vw;
+      font-size: clamp(0.625rem, 0.68vw, 0.75rem);
+      text-transform: uppercase;
+      color: var(--text);
+      background: rgba(255,255,255,0.02);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .samples {
+      display: grid;
+      gap: 0.4vw;
+      max-height: none;
+      overflow: visible;
+      padding-right: 0.2vw;
+    }
+    .sample-item {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.5vw;
+      align-items: center;
+      border: 0.08vw solid var(--border);
+      padding: 0.5vw 0.65vw;
+      font-size: clamp(0.625rem, 0.7vw, 0.75rem);
+      text-transform: uppercase;
+    }
+    .sample-item .count { color: var(--muted); }
+    .sample-item .del { width: auto; padding: 0.35vw 0.6vw; color: var(--danger); }
+    .sample-item .sample-meta { display: flex; flex-direction: column; gap: 0.15vw; min-width: 0; }
+    .sample-item .sample-hands {
+      color: var(--muted);
+      font-size: 0.82em;
+      text-transform: none;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+    }
+    .state-hand-banner {
+      margin-top: 0.55vw;
+      padding: 0.45vw 0.55vw;
+      border: 0.08vw solid var(--border);
+      font-size: clamp(0.5625rem, 0.62vw, 0.75rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05vw;
+    }
+    .state-hand-banner strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2vw;
+      background: rgba(0, 0, 0, 0.72);
+      border: none;
+    }
+    .modal-overlay.hidden { display: none !important; }
+    .modal-panel {
+      width: min(92vw, 26rem);
+      border: 0.08vw solid var(--border);
+      background: var(--panel);
+      padding: 1rem 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+    .modal-panel h3 {
+      margin: 0 0 0.55rem;
+      font-size: clamp(0.75rem, 0.85vw, 0.9rem);
+      color: var(--text);
+    }
+    .modal-panel .modal-body {
+      margin: 0 0 1rem;
+      font-size: clamp(0.625rem, 0.68vw, 0.78rem);
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: 0.02em;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.5vw;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .modal-actions button.secondary {
+      opacity: 0.85;
+    }
+
+    .radio-grid {
+      display: grid;
+      gap: 0.45vw;
+    }
+    .radio-title {
+      font-size: clamp(0.5625rem, 0.62vw, 0.75rem);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+    .radio-tiles {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.45vw;
+    }
+    .radio-tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile {
+      position: relative;
+      display: grid;
+      place-items: center;
+      gap: 0.25vw;
+      border: 0.08vw solid var(--border);
+      background: transparent;
+      padding: 0.65vw 0.45vw;
+      min-height: 3.15vw;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      text-transform: uppercase;
+      letter-spacing: 0.04vw;
+    }
+    .tile input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .tile .mainline {
+      font-weight: 700;
+      font-size: clamp(0.625rem, 0.72vw, 0.8125rem);
+    }
+    .tile .subline {
+      font-size: clamp(0.5rem, 0.55vw, 0.625rem);
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    .tile.active {
+      border-color: #fff;
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+    .tile.active .subline { color: #fff; }
+
+    @media (max-width: 75em) {
+      .main {
+        grid-template-columns: minmax(15vw, 26vw) minmax(16vw, 28vw) minmax(16vw, 1fr);
+      }
+      .video-wrap { max-height: 45vh; }
+    }
+
+    @media (max-width: 62em) {
+      body { padding: 1vw; }
+      .main {
+        grid-template-columns: minmax(12rem, 23vw) minmax(17rem, 1fr) minmax(12rem, 18vw);
+      }
+      .left, .center, .right { grid-template-rows: auto; }
+      .title h1 { font-size: 3vw; }
+      .title div, .tab, input, button, select, .status, .sample-item, .pill, .stat .k,
+      .info-row, .progress-meta, .chip, .tile, .radio-title { font-size: 1.4vw; }
+      .card h2 { font-size: 1.6vw; }
+      .prediction { font-size: 3vw; }
+      .samples { max-height: 8vw; }
+      .video-wrap { max-height: 48vh; width: 100%; aspect-ratio: 16 / 9; }
+    }
+
+    @media (max-width: 45em) {
+      body { padding: 1.2vw; }
+      .main { grid-template-columns: 1fr; }
+      .title h1 { font-size: 5vw; }
+      .title div, .tab, input, button, select, .status, .sample-item, .pill, .stat .k,
+      .info-row, .progress-meta, .chip, .tile, .radio-title { font-size: 3vw; }
+      .card h2 { font-size: 3.2vw; }
+      .prediction { font-size: 6vw; }
+      .samples { max-height: 30vw; }
+      .video-wrap { max-height: 40vh; }
+      .inline2, .inline3, .stats, .chips, .action-grid, .radio-tiles { grid-template-columns: 1fr; }
+      .sample-item { grid-template-columns: 1fr auto; }
+      .sample-item .count { grid-column: 2; }
+    }
+
+
+    :root { color-scheme: dark; }
+    .seg { display: flex; gap: 0.3vw; }
+    .seg button { flex: 1 1 0; padding: 0.5vw 0.3vw; }
+    .seg button.on { border-color: #fff; color: #050607; background: #fff; }
+    .action-grid.sec { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0.5vw; }
+    details.adv summary { cursor: pointer; color: var(--muted); text-transform: uppercase; font-weight: 700;
+      font-size: clamp(0.6875rem, 0.9vw, 1rem); letter-spacing: 0.05vw; }
+    details.adv[open] summary { margin-bottom: 0.6vw; color: #fff; }
+    .status:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="title">
+        <h1>Hand Gesture</h1>
+        <div>Record, train and test hand gestures</div>
+      </div>
+      <div class="tabs">
+        <div class="pill" id="modePill">MODE IDLE</div>
+      </div>
+    </header>
+
+    <section class="main">
+      <div class="left">
+        <div class="card">
+          <h2>Connect</h2>
+          <div class="row">
+            <button id="btnWebcam" type="button">Open webcam</button>
+          </div>
+          <div class="status" id="connStatus">Idle.</div>
+        </div>
+
+        <div class="card">
+          <h2>Setup</h2>
+          <div class="radio-grid">
+            <div class="radio-title">Model</div>
+            <div class="radio-tiles two" id="modelModeTiles">
+              <label class="tile active" data-radio-group="modelMode" data-model="knn">
+                <input type="radio" name="modelMode" value="knn" checked />
+                <span class="mainline">KNN</span>
+              </label>
+              <label class="tile" data-radio-group="modelMode" data-model="mlp">
+                <input type="radio" name="modelMode" value="mlp" />
+                <span class="mainline">MLP</span>
+              </label>
+              <label class="tile hidden" data-radio-group="modelMode" data-model="lstm">
+                <input type="radio" name="modelMode" value="lstm" />
+                <span class="mainline">LSTM</span>
+              </label>
+            </div>
+          </div>
+          <div class="radio-grid" style="margin-top:0.5vw;">
+            <div class="radio-title">Gesture type</div>
+            <div class="radio-tiles two" id="recognitionModeTiles">
+              <label class="tile active" data-radio-group="recognitionMode">
+                <input type="radio" name="recognitionMode" value="single" checked />
+                <span class="mainline">Static</span>
+                <span class="subline">still pose</span>
+              </label>
+              <label class="tile" data-radio-group="recognitionMode">
+                <input type="radio" name="recognitionMode" value="combo" />
+                <span class="mainline">Sequence</span>
+                <span class="subline">motion</span>
+              </label>
+            </div>
+          </div>
+          <div class="radio-grid" style="margin-top:0.5vw;">
+            <div class="radio-title">Hand</div>
+            <div class="radio-tiles" id="handModeTiles">
+              <label class="tile active" data-radio-group="handMode">
+                <input type="radio" name="handMode" value="right" checked />
+                <span class="mainline">Right</span>
+              </label>
+              <label class="tile" data-radio-group="handMode">
+                <input type="radio" name="handMode" value="left" />
+                <span class="mainline">Left</span>
+              </label>
+              <label class="tile" data-radio-group="handMode">
+                <input type="radio" name="handMode" value="both" />
+                <span class="mainline">Both</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Record</h2>
+          <div class="field">
+            <label>Gesture name</label>
+            <input id="gestureName" placeholder="name" />
+          </div>
+          <div class="row">
+            <div class="field">
+              <label id="countLabel">Frames to record</label>
+              <input id="configCount" type="number" min="1" value="100" />
+            </div>
+            <div class="field seq-only hidden">
+              <label>Frames / take</label>
+              <input id="sequenceFramesInput" type="number" min="5" max="120" value="30" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="field combo-only hidden">
+              <label>Takes per run</label>
+              <input id="batchInput" type="number" min="1" max="200" value="10" />
+            </div>
+            <div class="field seq-only hidden">
+              <label>Wait (s)</label>
+              <input id="countdownInput" type="number" min="0" max="10" value="2" />
+            </div>
+          </div>
+        </div>
+
+        <details class="card adv">
+          <summary>Advanced</summary>
+          <div class="field">
+            <label>Threshold</label>
+            <input id="thresholdInput" type="number" min="0" max="1" step="0.01" value="0.60" />
+          </div>
+          <div class="field">
+            <label>Capture width (px)</label>
+            <div class="seg" id="detectWidthSeg">
+              <button type="button" data-v="256">256</button>
+              <button type="button" data-v="320">320</button>
+              <button type="button" data-v="480" class="on">480</button>
+              <button type="button" data-v="640">640</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Max FPS</label>
+            <div class="seg" id="maxFpsSeg">
+              <button type="button" data-v="10">10</button>
+              <button type="button" data-v="15">15</button>
+              <button type="button" data-v="24" class="on">24</button>
+              <button type="button" data-v="30">30</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="center">
+        <div class="card">
+          <h2>Camera</h2>
+          <div class="video-wrap">
+            <video id="video" playsinline autoplay muted></video>
+            <canvas id="overlay" class="overlay"></canvas>
+            <canvas id="captureCanvas" class="hidden" aria-hidden="true"></canvas>
+          </div>
+        </div>
+
+        <div class="overlay-box center-prediction-strip">
+          <div class="pill" id="liveTaskPill">TASK IDLE</div>
+          <div class="prediction" id="predictionText">-</div>
+        </div>
+
+        <div class="notice program-status" id="programStatus">IDLE.</div>
+
+        <div class="center-model-stack">
+          <div class="card" id="knnPanel">
+            <h2>KNN</h2>
+            <div class="action-grid">
+              <button id="btnStartLearnKnn" type="button">Record</button>
+              <button type="button" class="js-record-none">Record NONE</button>
+              <button id="btnStartTestKnn" type="button">Test</button>
+              <button type="button" class="js-evaluate">Evaluate</button>
+            </div>
+            <div class="action-grid sec">
+              <button id="btnSaveKnn" type="button">Save</button>
+              <button id="btnLoadKnn" type="button">Load</button>
+              <button id="btnExportKnn" type="button">Export</button>
+              <button id="btnImportKnn" type="button">Import</button>
+            </div>
+            <div class="action-grid" style="margin-top:0.5vw;">
+              <button id="btnResetKnn" type="button" class="span-2">Reset KNN</button>
+            </div>
+            <div class="status" id="knnStatus">KNN idle.</div>
+          </div>
+
+          <div class="card hidden" id="mlpPanel">
+            <h2>MLP</h2>
+            <div class="action-grid">
+              <button id="btnStartLearnMlp" type="button">Record</button>
+              <button type="button" class="js-record-none">Record NONE</button>
+              <button id="btnTrainMlp" type="button">Train</button>
+              <button type="button" class="js-evaluate">Evaluate</button>
+              <button id="btnStartTestMlp" type="button" class="span-2">Test</button>
+            </div>
+            <div class="action-grid sec">
+              <button id="btnSaveMlp" type="button">Save</button>
+              <button id="btnLoadMlp" type="button">Load</button>
+              <button id="btnExportMlp" type="button">Export</button>
+              <button id="btnImportMlp" type="button">Import</button>
+            </div>
+            <div class="action-grid" style="margin-top:0.5vw;">
+              <button id="btnResetMlp" type="button" class="span-2">Reset MLP</button>
+            </div>
+            <div class="status" id="mlpStatus">MLP idle.</div>
+          </div>
+
+          <div class="card hidden" id="lstmPanel">
+            <h2>LSTM</h2>
+            <div class="action-grid">
+              <button id="btnStartLearnLstm" type="button">Record</button>
+              <button type="button" class="js-record-none">Record NONE</button>
+              <button id="btnTrainLstm" type="button">Train</button>
+              <button type="button" class="js-evaluate">Evaluate</button>
+              <button id="btnStartTestLstm" type="button" class="span-2">Test</button>
+            </div>
+            <div class="action-grid sec">
+              <button id="btnSaveLstm" type="button">Save</button>
+              <button id="btnLoadLstm" type="button">Load</button>
+              <button id="btnExportLstm" type="button">Export</button>
+              <button id="btnImportLstm" type="button">Import</button>
+            </div>
+            <div class="action-grid" style="margin-top:0.5vw;">
+              <button id="btnResetLstm" type="button" class="span-2">Reset LSTM</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="status" id="negHint"></div>
+        <div class="status" id="evalReport"></div>
+
+        <div class="card">
+          <h2>Recorded gestures</h2>
+          <div class="samples" id="gestureList"></div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="card">
+          <h2>Live status</h2>
+          <div class="info-grid">
+            <div class="info-row"><span>Model</span><span id="liveMode">-</span></div>
+            <div class="info-row"><span>Camera</span><span id="liveCamera">-</span></div>
+            <div class="info-row"><span>Task</span><span id="liveTask">-</span></div>
+            <div class="info-row"><span>Label</span><span id="liveLabel">-</span></div>
+            <div class="info-row"><span>Hand side</span><span id="liveHandMode">-</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Progress</h2>
+          <div class="progress-wrap">
+            <div class="progress-meta">
+              <span id="progressText">0 / 0</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-steps" id="progressSteps" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>State</h2>
+          <div class="stats">
+            <div class="stat"><div class="k">Samples</div><div class="v" id="sampleCount">0</div></div>
+            <div class="stat"><div class="k">Labels</div><div class="v" id="labelCount">0</div></div>
+            <div class="stat"><div class="k">FPS</div><div class="v" id="fpsValue">0</div></div>
+            <div class="stat"><div class="k">Prediction</div><div class="v" id="predValue">-</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Active features</h2>
+          <div class="chips" id="featureList"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <input type="file" id="fileImport" accept=".zip,application/zip,application/x-zip-compressed" hidden />
+
+  <div id="duplicateLabelModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="duplicateLabelTitle">
+    <div class="modal-panel">
+      <h3 id="duplicateLabelTitle">Duplicate label</h3>
+      <p id="duplicateLabelMessage" class="modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="duplicateLabelCancel" class="secondary">Cancel</button>
+        <button type="button" id="duplicateLabelOverwrite">Overwrite</button>
+      </div>
+    </div>
+  </div>
+    <script>
+    /** Gesture SDK — optional static state JSON from ./storage/ (outside WebSocket). */
+    window.GestureSDK = class GestureSDK {
+      constructor(baseUrl, mode) {
+        this.baseUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+        this.mode = mode;
+      }
+      async loadState() {
+        const res = await fetch(new URL('./storage/' + this.mode + '-state.json', this.baseUrl));
+        if (!res.ok) throw new Error('loadState failed: ' + res.status);
+        return res.json();
+      }
+    };
+
+    (function () {
+      const CONNECTIONS = [
+        [0, 1], [1, 2], [2, 3], [3, 4],
+        [0, 5], [5, 6], [6, 7], [7, 8],
+        [5, 9], [9, 10], [10, 11], [11, 12],
+        [9, 13], [13, 14], [14, 15], [15, 16],
+        [13, 17], [17, 18], [18, 19], [19, 20],
+        [0, 17],
+      ];
+
+      const el = (id) => document.getElementById(id);
+      const video = el('video');
+      const overlay = el('overlay');
+      const ctx = overlay.getContext('2d');
+      const programStatusEl = el('programStatus');
+      const connStatusEl = el('connStatus');
+      const liveTaskPill = el('liveTaskPill');
+      const predictionText = el('predictionText');
+      const predValue = el('predValue');
+      const sampleCountEl = el('sampleCount');
+      const labelCountEl = el('labelCount');
+      const fpsValueEl = el('fpsValue');
+      const gestureList = el('gestureList');
+      const liveModeEl = el('liveMode');
+      const liveCameraEl = el('liveCamera');
+      const liveTaskEl = el('liveTask');
+      const liveLabelEl = el('liveLabel');
+      const liveHandModeEl = el('liveHandMode');
+      const stateHandLabelEl = el('stateHandLabel');
+      const duplicateLabelModal = el('duplicateLabelModal');
+      const duplicateLabelMessage = el('duplicateLabelMessage');
+      const duplicateLabelOverwrite = el('duplicateLabelOverwrite');
+      const duplicateLabelCancel = el('duplicateLabelCancel');
+      const progressTextEl = el('progressText');
+      const progressPercentEl = el('progressPercent');
+      const progressFillEl = el('progressFill');
+      const progressStepsEl = el('progressSteps');
+      const featureListEl = el('featureList');
+      const comboStatus = el('comboStatus');
+      const fileImport = el('fileImport');
+      const gestureName = el('gestureName');
+      const configCountEl = el('configCount');
+      const thresholdInput = el('thresholdInput');
+      const batchInput = el('batchInput');
+      const evaluateBtns = Array.from(document.querySelectorAll('.js-evaluate'));
+      const recordNoneBtns = Array.from(document.querySelectorAll('.js-record-none'));
+      const negHintEl = el('negHint');
+      const countLabelEl = el('countLabel');
+      const evalReportEl = el('evalReport');
+      const sequenceFramesInput = el('sequenceFramesInput');
+      const countdownInput = el('countdownInput');
+      function makeSeg(id) {
+        const root = el(id);
+        const btns = Array.from(root.querySelectorAll('button'));
+        const api = {
+          get value() { const b = root.querySelector('button.on'); return b ? b.dataset.v : ''; },
+          set value(v) { btns.forEach((b) => b.classList.toggle('on', b.dataset.v === String(v))); },
+          addEventListener(_t, fn) { root.addEventListener('segchange', fn); },
+        };
+        btns.forEach((b) => b.addEventListener('click', () => { api.value = b.dataset.v; root.dispatchEvent(new Event('segchange')); }));
+        return api;
+      }
+      const detectWidthSelect = makeSeg('detectWidthSeg');
+      const maxFpsSelect = makeSeg('maxFpsSeg');
+      const captureWidth = () => Number(detectWidthSelect.value || 480);
+      const captureFps = () => Number(maxFpsSelect.value || 24);
+      const recognitionModeTiles = Array.from(document.querySelectorAll('#recognitionModeTiles .tile'));
+      const handModeTiles = Array.from(document.querySelectorAll('#handModeTiles .tile'));
+      const modelModeTiles = Array.from(document.querySelectorAll('#modelModeTiles .tile'));
+      const captureCanvas = el('captureCanvas');
+      const captureCtx = captureCanvas.getContext('2d');
+      const FRAME_JPEG_QUALITY = 0.55;
+      const buttons = {
+        webcam: el('btnWebcam'),
+        startLearnKnn: el('btnStartLearnKnn'), startTestKnn: el('btnStartTestKnn'), saveKnn: el('btnSaveKnn'), loadKnn: el('btnLoadKnn'), exportKnn: el('btnExportKnn'), importKnn: el('btnImportKnn'), resetKnn: el('btnResetKnn'),
+        startLearnMlp: el('btnStartLearnMlp'), trainMlp: el('btnTrainMlp'), startTestMlp: el('btnStartTestMlp'), saveMlp: el('btnSaveMlp'), loadMlp: el('btnLoadMlp'), exportMlp: el('btnExportMlp'), importMlp: el('btnImportMlp'), resetMlp: el('btnResetMlp'),
+        startLearnLstm: el('btnStartLearnLstm'), trainLstm: el('btnTrainLstm'), startTestLstm: el('btnStartTestLstm'), saveLstm: el('btnSaveLstm'), loadLstm: el('btnLoadLstm'), exportLstm: el('btnExportLstm'), importLstm: el('btnImportLstm'), resetLstm: el('btnResetLstm'),
+      };
+
+      const state = {
+        socket: null,
+        connected: false,
+        running: false,
+        snapshot: null,
+        activeModel: 'knn',
+        recognitionMode: 'single',
+        handMode: 'right',
+        cameraStream: null,
+        frameBusy: false,
+        frameTimer: null,
+        frameId: 0,
+        exportUrl: null,
+        /** Client-only status (e.g. validation); ignore snapshot program line until expiry or non-frame send. */
+        clientProgramStatusLockUntil: 0,
+        trainProgressUi: false,
+        /** Ignore stale snapshot config briefly after user changes tiles. */
+        configChangedAt: 0,
+      };
+
+      function syncConfigTilesFromState() {
+        const setGroup = (tiles, value) => {
+          tiles.forEach((tile) => {
+            const input = tile.querySelector('input');
+            if (input) input.checked = input.value === value;
+          });
+        };
+        setGroup(modelModeTiles, state.activeModel);
+        setGroup(recognitionModeTiles, state.recognitionMode);
+        setGroup(handModeTiles, state.handMode);
+        syncTiles();
+      }
+
+      function snapshotConflictsWithLocalConfig(snapshot) {
+        if (!state.configChangedAt || Date.now() - state.configChangedAt > 3000) return false;
+        return (
+          (snapshot.activeModel && snapshot.activeModel !== state.activeModel) ||
+          (snapshot.recognitionMode && snapshot.recognitionMode !== state.recognitionMode) ||
+          (snapshot.handMode && snapshot.handMode !== state.handMode)
+        );
+      }
+
+      function mergeConfigFromSnapshot(snapshot) {
+        if (snapshotConflictsWithLocalConfig(snapshot)) {
+          syncConfigTilesFromState();
+          return;
+        }
+        state.activeModel = snapshot.activeModel || state.activeModel;
+        state.recognitionMode = snapshot.recognitionMode || state.recognitionMode;
+        state.handMode = snapshot.handMode || state.handMode;
+        state.configChangedAt = 0;
+        syncConfigTilesFromState();
+      }
+
+      function applyTrainProgressUi(progress) {
+        if (!progress) return;
+        state.trainProgressUi = true;
+        state.clientProgramStatusLockUntil = Date.now() + 120000;
+        const msg = progress.message || 'Training…';
+        updateProgramStatus(msg, 'good', { fromServer: true });
+        const total = Math.max(1, Number(progress.totalSteps || progress.totalEpochs) || 1);
+        const cur = Math.min(total, Number(progress.step || progress.epoch) || 0);
+        const pct = Math.min(100, Math.round((cur / total) * 100));
+        progressTextEl.textContent = msg;
+        progressPercentEl.textContent = `${pct}%`;
+        progressFillEl.style.width = `${pct}%`;
+        renderProgressSteps(pct);
+        if (liveTaskEl) liveTaskEl.textContent = 'TRAINING';
+      }
+
+      function clearTrainProgressUi() {
+        state.trainProgressUi = false;
+        state.clientProgramStatusLockUntil = 0;
+      }
+
+      function wsUrl() {
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${proto}//${location.host}/ws`;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function updateProgramStatus(msg, tone = 'good', options = {}) {
+        const fromServer = options.fromServer === true;
+        programStatusEl.textContent = msg;
+        programStatusEl.classList.remove('good', 'warn');
+        if (tone) programStatusEl.classList.add(tone);
+        if (fromServer) {
+          state.clientProgramStatusLockUntil = 0;
+        } else {
+          state.clientProgramStatusLockUntil = Date.now() + 4000;
+        }
+      }
+
+      function handModeEn(hm) {
+        const x = String(hm || '').toLowerCase();
+        if (x === 'left') return 'Left';
+        if (x === 'right') return 'Right';
+        if (x === 'both') return 'Both';
+        return '—';
+      }
+
+      function compactHandLine(bh) {
+        const order = [['right', 'Right'], ['left', 'Left'], ['both', 'Both']];
+        const parts = [];
+        for (const [key, label] of order) {
+          const n = Number(bh[key]);
+          if (Number.isFinite(n) && n > 0) parts.push(`${label} ${n}`);
+        }
+        return parts.join(' · ');
+      }
+
+      function setPrediction(label, confidence) {
+        if (!label || label === '-') {
+          predictionText.textContent = '-';
+          predValue.textContent = '-';
+          return;
+        }
+        const text = `${label} ${(confidence * 100).toFixed(1)}%`;
+        predictionText.textContent = text;
+        predValue.textContent = label;
+      }
+
+      /** Multi-layer “trace” stroke — white / white alpha */
+      function strokeCircuitTrace(x1, y1, x2, y2, S) {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+        ctx.lineWidth = Math.max(5, 10 * S);
+        ctx.stroke();
+        ctx.setLineDash([Math.max(4, 5 * S), Math.max(3, 3.5 * S)]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+        ctx.lineWidth = Math.max(1.4, 2.4 * S);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1.1, 1.75 * S);
+        ctx.stroke();
+      }
+
+      /** Pad / via: board-style corners around each node */
+      function drawCircuitPad(px, py, S, kind) {
+        const tip = kind === 'tip';
+        const wrist = kind === 'wrist';
+        const r = wrist ? Math.max(3.2, 5 * S) : tip ? Math.max(2.4, 3.6 * S) : Math.max(2, 2.8 * S);
+        const tick = Math.max(1.8, 2.6 * S);
+        ctx.lineCap = 'square';
+        ctx.lineJoin = 'miter';
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = Math.max(0.9, 1.1 * S);
+        ctx.beginPath();
+        ctx.arc(px, py, r + Math.max(0.8, 1.2 * S), 0, Math.PI * 2);
+        ctx.stroke();
+        const d = r + tick * 0.9;
+        const L = tick * 1.15;
+        const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+        for (const [sx, sy] of corners) {
+          const ox = px + sx * d;
+          const oy = py + sy * d;
+          ctx.beginPath();
+          if (sx < 0 && sy < 0) { ctx.moveTo(ox, oy + L); ctx.lineTo(ox, oy); ctx.lineTo(ox + L, oy); }
+          else if (sx > 0 && sy < 0) { ctx.moveTo(ox - L, oy); ctx.lineTo(ox, oy); ctx.lineTo(ox, oy + L); }
+          else if (sx > 0 && sy > 0) { ctx.moveTo(ox, oy - L); ctx.lineTo(ox, oy); ctx.lineTo(ox - L, oy); }
+          else { ctx.moveTo(ox + L, oy); ctx.lineTo(ox, oy); ctx.lineTo(ox, oy - L); }
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = Math.max(0.65, 0.85 * S);
+        const inner = wrist ? r * 0.45 : tip ? r * 0.5 : r * 0.42;
+        ctx.beginPath();
+        ctx.rect(px - inner, py - inner, inner * 2, inner * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(0.55, 0.85 * S), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function padKindForLandmark(i) {
+        if (i === 0) return 'wrist';
+        if (i === 4 || i === 8 || i === 12 || i === 16 || i === 20) return 'tip';
+        return 'joint';
+      }
+
+      function drawHandsOverlay(overlayData) {
+        const hands = overlayData?.hands || [];
+        const w = overlayData?.width || video.videoWidth || 640;
+        const h = overlayData?.height || video.videoHeight || 480;
+        if (!w || !h) return;
+        if (overlay.width !== w) overlay.width = w;
+        if (overlay.height !== h) overlay.height = h;
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        const S = Math.max(0.75, Math.min(w, h) / 520);
+        for (const hand of hands) {
+          const pts = hand.landmarks || [];
+          for (const [a, b] of CONNECTIONS) {
+            const p1 = pts[a];
+            const p2 = pts[b];
+            if (!p1 || !p2) continue;
+            strokeCircuitTrace(
+              p1[0] * w, p1[1] * h,
+              p2[0] * w, p2[1] * h,
+              S
+            );
+          }
+          pts.forEach((p, i) => {
+            if (!p) return;
+            drawCircuitPad(p[0] * w, p[1] * h, S, padKindForLandmark(i));
+          });
+        }
+      }
+
+      function syncFieldFromSnapshot(inputEl, serverVal) {
+        if (serverVal == null || serverVal === '') return;
+        if (document.activeElement === inputEl) return;
+        const next = String(serverVal);
+        if (inputEl.value !== next) inputEl.value = next;
+      }
+
+      function countsForBackend(model) {
+        const a = Number(String(configCountEl.value).trim() || 0);
+        const target = Math.max(1, a || 100);
+        const seq = Math.max(5, Number(String(sequenceFramesInput.value).trim() || 0) || 30);
+        return { targetCount: target, sequenceFrames: seq };
+      }
+
+      function syncCountInputsFromSnapshot(snapshot) {
+        syncFieldFromSnapshot(configCountEl, snapshot.targetCount);
+        syncFieldFromSnapshot(sequenceFramesInput, snapshot.sequenceFrames);
+        syncFieldFromSnapshot(countdownInput, snapshot.countdown);
+        syncFieldFromSnapshot(batchInput, snapshot.batch?.total);
+      }
+
+      function currentGestureLabel() {
+        return String(gestureName.value.trim()).trim();
+      }
+
+      function comboLabelExists(mode) {
+        const label = currentGestureLabel();
+        if (!label) return false;
+        const labels = state.snapshot?.modeData?.[mode]?.labels || [];
+        return labels.some((x) => String(x) === label);
+      }
+
+      function refreshConfigVisibility(rec, model) {
+        const combo = rec === 'combo' && (model === 'knn' || model === 'lstm');
+        const seq = combo || model === 'lstm';
+        document.querySelectorAll('.seq-only').forEach((e) => e.classList.toggle('hidden', !seq));
+        document.querySelectorAll('.combo-only').forEach((e) => e.classList.toggle('hidden', !combo));
+        countLabelEl.textContent = combo ? 'NONE windows' : (model === 'lstm' ? 'Sequences to record' : 'Frames to record');
+      }
+
+      function refreshComboLearnCaptions() {
+        return;
+        const combo = state.recognitionMode === 'combo';
+        const model = state.activeModel;
+        if (buttons.startLearnKnn) {
+          buttons.startLearnKnn.textContent = combo && model === 'knn' ? 'Record' : 'Record';
+        }
+        if (buttons.startLearnLstm) {
+          buttons.startLearnLstm.textContent = combo && model === 'lstm' ? 'Record' : 'Record';
+        }
+      }
+
+
+      function renderProgressSteps(pct) {
+        const host = progressStepsEl;
+        if (!host) return;
+        const n = 12;
+        if (!host.querySelector('.progress-step')) {
+          host.innerHTML = Array.from({ length: n }, () => '<div class="progress-step"><div class="progress-step-fill"></div></div>').join('');
+        }
+        const fills = host.querySelectorAll('.progress-step-fill');
+        const p = Math.max(0, Math.min(100, pct));
+        fills.forEach((fill, i) => {
+          const lo = (i / n) * 100;
+          const hi = ((i + 1) / n) * 100;
+          if (p >= hi) fill.style.width = '100%';
+          else if (p <= lo) fill.style.width = '0%';
+          else fill.style.width = `${((p - lo) / (hi - lo)) * 100}%`;
+        });
+      }
+
+      function renderFeatures(snapshot) {
+        const items = snapshot?.featureList || [];
+        featureListEl.innerHTML = items.map(item => `<div class="chip"><strong>${escapeHtml(item.name)}:</strong> ${escapeHtml(item.value)}</div>`).join('');
+      }
+
+      function renderGestureList(snapshot) {
+        const mode = snapshot?.activeModel || state.activeModel;
+        const data = snapshot?.modeData?.[mode] || {};
+        const labels = Array.isArray(data.labels) ? data.labels : [];
+        const counts = data.sampleBufferCount || {};
+        const byHand = data.sampleBufferCountByHand || {};
+        const total = snapshot?.targetCount || 100;
+        const combo = snapshot?.recognitionMode === 'combo' && (mode === 'knn' || mode === 'lstm');
+        if (!labels.length) {
+          gestureList.innerHTML = '<div class="sample-item"><span>EMPTY</span><span class="count">0</span><span></span></div>';
+          return;
+        }
+        gestureList.innerHTML = labels.sort((a, b) => String(a).localeCompare(String(b))).map(label => {
+          const count = counts[label] || 0;
+          const bh = byHand[label] || {};
+          const handLine = compactHandLine(bh);
+          return `<div class="sample-item"><div class="sample-meta"><span>${escapeHtml(label)}</span>${handLine ? `<span class="sample-hands">${escapeHtml(handLine)}</span>` : ''}</div><span class="count">${combo ? count : `${count}/${total}`}</span><button class="del" data-delete-label="${escapeHtml(label)}">Delete</button></div>`;
+        }).join('');
+      }
+
+      function updateVisiblePanels() {
+        const combo = state.recognitionMode === 'combo';
+        document.getElementById('knnPanel').classList.toggle('hidden', state.activeModel !== 'knn');
+        document.getElementById('mlpPanel').classList.toggle('hidden', state.activeModel !== 'mlp');
+        document.getElementById('lstmPanel').classList.toggle('hidden', state.activeModel !== 'lstm');
+        const modelTiles = modelModeTiles;
+        let needConfig = false;
+        modelTiles.forEach(tile => {
+          const model = tile.getAttribute('data-model');
+          const visible = combo ? (model === 'knn' || model === 'lstm') : (model === 'knn' || model === 'mlp');
+          tile.classList.toggle('hidden', !visible);
+          const input = tile.querySelector('input');
+          if (input && !visible && input.checked) input.checked = false;
+        });
+        const visibleModelTiles = modelTiles.filter((t) => !t.classList.contains('hidden'));
+        const checkedVisible = visibleModelTiles.find((t) => t.querySelector('input')?.checked);
+        if (!checkedVisible && visibleModelTiles.length) {
+          const input = visibleModelTiles[0].querySelector('input');
+          if (input) {
+            input.checked = true;
+            state.activeModel = input.value;
+            needConfig = true;
+          }
+        } else if (checkedVisible) {
+          const input = checkedVisible.querySelector('input');
+          if (input && input.value !== state.activeModel) {
+            state.activeModel = input.value;
+          }
+        }
+        syncTiles();
+        if (needConfig) applyConfigFromInputs();
+      }
+
+      function syncTiles() {
+        const sync = (tiles) => tiles.forEach(tile => {
+          const input = tile.querySelector('input');
+          tile.classList.toggle('active', !!input?.checked);
+        });
+        sync(handModeTiles);
+        sync(recognitionModeTiles);
+        sync(modelModeTiles);
+      }
+
+      function updateUiFromSnapshot(snapshot) {
+        if (!snapshot) return;
+        state.snapshot = snapshot;
+        mergeConfigFromSnapshot(snapshot);
+        syncCountInputsFromSnapshot(snapshot);
+        if (snapshot.capture) {
+          if (document.activeElement !== detectWidthSelect) detectWidthSelect.value = String(snapshot.capture.detectWidth);
+          if (document.activeElement !== maxFpsSelect) maxFpsSelect.value = String(snapshot.capture.maxFps);
+        }
+        if (snapshot.threshold != null && document.activeElement !== thresholdInput) {
+          thresholdInput.value = Number(snapshot.threshold).toFixed(2);
+        }
+        liveModeEl.textContent = snapshot.live?.mode || '-';
+        liveCameraEl.textContent = isCameraActive() ? 'ON' : 'OFF';
+        liveTaskEl.textContent = snapshot.live?.task || '-';
+        liveLabelEl.textContent = snapshot.live?.label || '-';
+        liveHandModeEl.textContent = handModeEn(snapshot.handMode);
+        if (stateHandLabelEl) {
+          stateHandLabelEl.innerHTML = `Hand mode: <strong>${escapeHtml(handModeEn(snapshot.handMode))}</strong>`;
+        }
+        connStatusEl.textContent = isCameraActive() ? 'CAMERA ON' : 'CAMERA OFF';
+        if (Date.now() >= state.clientProgramStatusLockUntil) {
+          const line = snapshot.programStatus != null ? String(snapshot.programStatus) : 'IDLE.';
+          let tone = snapshot.programStatusTone;
+          if (tone !== 'good' && tone !== 'warn') {
+            tone = isCameraActive() ? 'good' : 'warn';
+          }
+          updateProgramStatus(line, tone, { fromServer: true });
+        }
+        setPrediction(snapshot.predictionLabel || snapshot.predictionText || '-', snapshot.predictionConfidence || 0);
+        sampleCountEl.textContent = String(snapshot.modeData?.[state.activeModel]?.sampleCount || 0);
+        labelCountEl.textContent = String((snapshot.modeData?.[state.activeModel]?.labels || []).length || 0);
+        fpsValueEl.textContent = snapshot.sampleFps ? String(snapshot.sampleFps.toFixed(1)) : '0';
+        if (snapshot.training && snapshot.trainProgress) {
+          applyTrainProgressUi(snapshot.trainProgress);
+        } else if (!snapshot.training && state.trainProgressUi) {
+          clearTrainProgressUi();
+        }
+        const progMode = snapshot.activeModel || state.activeModel;
+        const progLabel = snapshot.currentLabel || '';
+        const progBuf = snapshot.modeData?.[progMode]?.sampleBufferCount || {};
+        const bufCount =
+          progLabel && (progMode === 'knn' || progMode === 'mlp' || progMode === 'lstm')
+            ? (progBuf[progLabel] ?? 0)
+            : null;
+        const curSample = bufCount != null
+          ? Math.max(Number(snapshot.currentSampleProgress) || 0, Number(bufCount) || 0)
+          : (snapshot.currentSampleProgress || 0);
+        if (!(snapshot.training && snapshot.trainProgress)) {
+          const isComboSequenceMode = snapshot.recognitionMode === 'combo' && (snapshot.activeModel === 'knn' || snapshot.activeModel === 'lstm');
+          const tf = Math.max(1, (isComboSequenceMode ? snapshot.sequenceFrames : snapshot.targetCount) || 100);
+          const frameProg = Math.min(tf, Number(snapshot.currentSampleProgress) || 0);
+          const displayProg = isComboSequenceMode ? frameProg : curSample;
+          progressTextEl.textContent = `${displayProg} / ${tf}`;
+          const pct = Math.min(100, Math.round((displayProg / tf) * 100));
+          progressPercentEl.textContent = `${pct}%`;
+          progressFillEl.style.width = `${pct}%`;
+          renderProgressSteps(pct);
+        }
+        renderFeatures(snapshot);
+        renderGestureList(snapshot);
+        negHintEl.textContent = snapshot.hasNegative ? '' : 'No NONE class yet.';
+        evalReportEl.textContent = snapshot.evalReport || '';
+        evaluateBtns.forEach((b) => {
+          b.disabled = !!(snapshot.evaluating || snapshot.training);
+          b.textContent = snapshot.evaluating ? 'Evaluating…' : 'Evaluate';
+        });
+        recordNoneBtns.forEach((b) => {
+          b.disabled = !snapshot.running || !!(snapshot.learning || snapshot.testing || snapshot.training);
+        });
+        refreshConfigVisibility(snapshot.recognitionMode, snapshot.activeModel);
+        syncTiles();
+        updateVisiblePanels();
+        const snap = state.snapshot;
+        syncWebcamButton();
+        setButtonState(snapshot);
+      }
+
+      function setToggleButton(btn, on, offLabel, onLabel) {
+        if (!btn) return;
+        btn.textContent = on ? onLabel : offLabel;
+        btn.classList.toggle('btn-on', on);
+      }
+
+      function isCameraActive() {
+        return !!state.cameraStream;
+      }
+
+      function resetLocalCamera() {
+        state.running = false;
+        state.frameBusy = false;
+        if (state.frameTimer) {
+          clearTimeout(state.frameTimer);
+          state.frameTimer = null;
+        }
+        if (state.cameraStream) {
+          state.cameraStream.getTracks().forEach((t) => t.stop());
+          state.cameraStream = null;
+        }
+        if (video) video.srcObject = null;
+        if (ctx && overlay) ctx.clearRect(0, 0, overlay.width, overlay.height);
+        syncWebcamButton();
+      }
+
+      function syncWebcamButton() {
+        setToggleButton(buttons.webcam, isCameraActive(), 'Open webcam', 'Stop webcam');
+      }
+
+      function setButtonState(snapshot) {
+        const model = snapshot.activeModel || state.activeModel;
+        const running = isCameraActive();
+        const learning = !!snapshot.learning;
+        const testing = !!snapshot.testing;
+        const training = !!snapshot.training;
+        const has = snapshot.hasModels || {};
+        const hasKnn = !!has.knn;
+        const hasMlp = !!has.mlp;
+        const hasLstm = !!has.lstm;
+        const mlpSamples = snapshot.modeData?.mlp?.sampleCount || 0;
+        const lstmSamples = snapshot.modeData?.lstm?.sampleCount || 0;
+        const learnOnKnn = learning && model === 'knn';
+        const testOnKnn = testing && model === 'knn';
+        const comboMode = snapshot.recognitionMode === 'combo';
+        const knnComboMode = comboMode && model === 'knn';
+        if (knnComboMode) {
+          setToggleButton(buttons.startLearnKnn, learnOnKnn, 'Record', 'Stop');
+          buttons.startLearnKnn.disabled = !running || training || testing || (learnOnKnn ? false : (!currentGestureLabel() || learning));
+        } else {
+          setToggleButton(buttons.startLearnKnn, learnOnKnn, 'Record', 'Stop');
+          buttons.startLearnKnn.disabled = !running || model !== 'knn' || training || (learnOnKnn ? false : (learning || testing));
+        }
+        setToggleButton(buttons.startTestKnn, testOnKnn, 'Test', 'Stop test');
+        buttons.startTestKnn.disabled = !running || model !== 'knn' || training || (testOnKnn ? false : (learning || testing || !hasKnn));
+        buttons.saveKnn.disabled = model !== 'knn' || learning || testing || training;
+        buttons.loadKnn.disabled = model !== 'knn' || learning || testing || training;
+        buttons.exportKnn.disabled = model !== 'knn' || !hasKnn;
+
+        const learnOnMlp = learning && model === 'mlp';
+        const testOnMlp = testing && model === 'mlp';
+        const trainOnMlp = training && model === 'mlp';
+        setToggleButton(buttons.startLearnMlp, learnOnMlp, 'Record', 'Stop');
+        setToggleButton(buttons.trainMlp, trainOnMlp, 'Train', 'Stop train');
+        setToggleButton(buttons.startTestMlp, testOnMlp, 'Test', 'Stop test');
+        buttons.startLearnMlp.disabled = !running || model !== 'mlp' || (trainOnMlp ? false : training) || (learnOnMlp ? false : (learning || testing));
+        buttons.trainMlp.disabled = model !== 'mlp' || (trainOnMlp ? false : (training || mlpSamples < 1 || learning || testing));
+        buttons.startTestMlp.disabled = !running || model !== 'mlp' || training || (testOnMlp ? false : (learning || testing || !hasMlp));
+        buttons.saveMlp.disabled = model !== 'mlp' || learning || testing || training;
+        buttons.loadMlp.disabled = model !== 'mlp' || learning || testing || training;
+        buttons.exportMlp.disabled = model !== 'mlp' || !hasMlp;
+
+        const learnOnLstm = learning && model === 'lstm';
+        const testOnLstm = testing && model === 'lstm';
+        const trainOnLstm = training && model === 'lstm';
+        const lstmComboMode = comboMode && model === 'lstm';
+        if (lstmComboMode) {
+          setToggleButton(buttons.startLearnLstm, learnOnLstm, 'Record', 'Stop');
+          buttons.startLearnLstm.disabled = !running || training || testing || (learnOnLstm ? false : (!currentGestureLabel() || learning));
+        } else {
+          setToggleButton(buttons.startLearnLstm, learnOnLstm, 'Record', 'Stop');
+          buttons.startLearnLstm.disabled = !running || model !== 'lstm' || (trainOnLstm ? false : training) || (learnOnLstm ? false : (learning || testing));
+        }
+        setToggleButton(buttons.trainLstm, trainOnLstm, 'Train', 'Stop train');
+        setToggleButton(buttons.startTestLstm, testOnLstm, 'Test', 'Stop test');
+        buttons.trainLstm.disabled = model !== 'lstm' || (trainOnLstm ? false : (training || lstmSamples < 1 || learning || testing));
+        buttons.startTestLstm.disabled = !running || model !== 'lstm' || training || (testOnLstm ? false : (learning || testing || !hasLstm));
+        buttons.saveLstm.disabled = model !== 'lstm' || learning || testing || training;
+        buttons.loadLstm.disabled = model !== 'lstm' || learning || testing || training;
+        buttons.exportLstm.disabled = model !== 'lstm' || !hasLstm;
+        refreshComboLearnCaptions();
+      }
+
+      function connectSocket() {
+        const socket = new WebSocket(wsUrl());
+        state.socket = socket;
+        socket.addEventListener('open', () => {
+          state.connected = true;
+          resetLocalCamera();
+          send({ type: 'stop_camera' });
+          updateProgramStatus('Connected to server', 'good', { fromServer: true });
+          const c = countsForBackend(state.activeModel);
+          socket.send(JSON.stringify({ type: 'config', activeModel: state.activeModel, recognitionMode: state.recognitionMode, handMode: state.handMode, sequenceFrames: c.sequenceFrames, threshold: Number(thresholdInput.value || 0.6), targetCount: c.targetCount, detectWidth: captureWidth(), maxFps: captureFps(), countdown: Number(countdownInput.value || 0), batchCount: Number(batchInput.value || 1) }));
+        });
+        socket.addEventListener('close', () => {
+          state.connected = false;
+          resetLocalCamera();
+          updateProgramStatus('Server disconnected', 'warn');
+          setTimeout(connectSocket, 800);
+        });
+        socket.addEventListener('error', () => {
+          updateProgramStatus('Socket error', 'warn');
+        });
+        socket.addEventListener('message', async (event) => {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'snapshot' || msg.type === 'command_result' || msg.type === 'eval_complete') {
+            if (msg.snapshot) updateUiFromSnapshot(msg.snapshot);
+            if (msg.type === 'command_result') {
+              if (msg.ok === false && msg.error && !msg.snapshot) {
+                updateProgramStatus(String(msg.error), 'warn');
+              } else if (msg.message && !msg.snapshot) {
+                updateProgramStatus(String(msg.message), 'good');
+              }
+            } else if (msg.message && !msg.snapshot) {
+              updateProgramStatus(String(msg.message), 'good');
+            }
+            return;
+          }
+          if (msg.type === 'train_progress') {
+            if (msg.progress) applyTrainProgressUi(msg.progress);
+            if (msg.snapshot) {
+              state.snapshot = msg.snapshot;
+              setButtonState(msg.snapshot);
+              syncWebcamButton();
+            }
+            return;
+          }
+          if (msg.type === 'train_complete') {
+            clearTrainProgressUi();
+            if (msg.snapshot) updateUiFromSnapshot(msg.snapshot);
+            else if (msg.message) {
+              updateProgramStatus(String(msg.message), msg.ok === false ? 'warn' : 'good', { fromServer: true });
+            }
+            return;
+          }
+          if (msg.type === 'frame_result') {
+            state.frameBusy = false;
+            if (msg.overlay) drawHandsOverlay(msg.overlay);
+            if (msg.snapshot) updateUiFromSnapshot(msg.snapshot);
+            if (msg.error === 'mediapipe_missing') {
+              updateProgramStatus('Server is missing MediaPipe. Install requirements.txt.', 'warn');
+            }
+            scheduleNextFrame();
+            return;
+          }
+          if (msg.type === 'error') {
+            state.frameBusy = false;
+            updateProgramStatus(msg.error || 'Server error', 'warn');
+            scheduleNextFrame();
+          }
+        });
+      }
+
+      function send(obj) {
+        if (!state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+        if (obj && obj.type !== 'frame') {
+          state.clientProgramStatusLockUntil = 0;
+        }
+        state.socket.send(JSON.stringify(obj));
+      }
+
+      async function startCamera() {
+        if (state.cameraStream) return;
+        state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        video.srcObject = state.cameraStream;
+        await video.play();
+        state.running = true;
+        syncWebcamButton();
+        send({ type: 'start_camera' });
+        scheduleNextFrame();
+      }
+
+      function scheduleNextFrame() {
+        if (!state.running) return;
+        if (state.frameTimer) {
+          clearTimeout(state.frameTimer);
+          state.frameTimer = null;
+        }
+        const minGap = 1000 / Math.max(1, captureFps());
+        const wait = Math.max(state.frameBusy ? 16 : 0, minGap - (performance.now() - (state.lastCaptureAt || 0)));
+        state.frameTimer = setTimeout(captureAndSendFrame, wait);
+      }
+
+      function stopCamera() {
+        resetLocalCamera();
+        send({ type: 'stop_camera' });
+        setPrediction('-', 0);
+      }
+
+      async function captureAndSendFrame() {
+        if (!state.running || state.frameBusy || !state.socket || state.socket.readyState !== WebSocket.OPEN || !video.videoWidth) {
+          scheduleNextFrame();
+          return;
+        }
+        state.frameBusy = true;
+        state.lastCaptureAt = performance.now();
+        try {
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          const scale = vw > captureWidth() ? captureWidth() / vw : 1;
+          const cw = Math.max(1, Math.round(vw * scale));
+          const ch = Math.max(1, Math.round(vh * scale));
+          if (captureCanvas.width !== cw) captureCanvas.width = cw;
+          if (captureCanvas.height !== ch) captureCanvas.height = ch;
+          captureCtx.drawImage(video, 0, 0, cw, ch);
+          const dataUrl = captureCanvas.toDataURL('image/jpeg', FRAME_JPEG_QUALITY);
+          const cnt = countsForBackend(state.activeModel);
+          send({
+            type: 'frame',
+            image: dataUrl,
+            config: {
+              sequenceFrames: cnt.sequenceFrames,
+              threshold: Number(thresholdInput.value || 0.6),
+              targetCount: cnt.targetCount,
+            }
+          });
+        } catch (err) {
+          state.frameBusy = false;
+          updateProgramStatus(String(err.message || err), 'warn');
+          scheduleNextFrame();
+        }
+      }
+
+      function applyConfigFromInputs() {
+        const active = document.querySelector('#modelModeTiles .tile.active input')?.value || state.activeModel;
+        const rec = document.querySelector('#recognitionModeTiles .tile.active input')?.value || state.recognitionMode;
+        const hand = document.querySelector('#handModeTiles .tile.active input')?.value || state.handMode;
+        state.activeModel = active;
+        state.recognitionMode = rec;
+        state.handMode = hand;
+        state.configChangedAt = Date.now();
+        refreshConfigVisibility(rec, active);
+        const c = countsForBackend(active);
+        const payload = {
+          type: 'config',
+          activeModel: active,
+          recognitionMode: rec,
+          handMode: hand,
+          sequenceFrames: c.sequenceFrames,
+          threshold: Number(thresholdInput.value || 0.6),
+          targetCount: c.targetCount,
+          detectWidth: captureWidth(),
+          maxFps: captureFps(),
+          countdown: Number(countdownInput.value || 0),
+          batchCount: Number(batchInput.value || 1),
+        };
+        send(payload);
+      }
+
+      async function importFile(file) {
+        if (!file) return;
+        const baseName = file.name || 'file';
+        updateProgramStatus(`Importing: ${baseName}…`, 'good');
+        let dataUrl;
+        try {
+          dataUrl = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = () => reject(new Error(r.error?.message || 'File read failed'));
+            r.readAsDataURL(file);
+          });
+        } catch (e) {
+          const err = String(e.message || e);
+          updateProgramStatus(`Import failed (${baseName}): ${err}`, 'warn');
+          return;
+        }
+        const s = String(dataUrl);
+        const comma = s.indexOf(',');
+        const base64 = comma === -1 ? s : s.slice(comma + 1);
+        if (!base64) {
+          updateProgramStatus(`Import failed (${baseName}): empty content.`, 'warn');
+          return;
+        }
+        if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+          updateProgramStatus('Import failed: not connected to server.', 'warn');
+          return;
+        }
+        send({ type: 'import', filename: file.name, contentBase64: base64 });
+      }
+
+
+      function bindButtonHandlers() {
+        buttons.webcam.addEventListener('click', () => {
+          if (state.running) stopCamera();
+          else startCamera();
+        });
+
+        let duplicatePending = null;
+
+        function closeDuplicateModal() {
+          if (duplicateLabelModal) duplicateLabelModal.classList.add('hidden');
+          duplicatePending = null;
+        }
+
+        function openDuplicateModal(label, mode) {
+          duplicatePending = { mode, label };
+          if (duplicateLabelMessage) {
+            duplicateLabelMessage.textContent =
+              `Label "${label}" already exists in ${String(mode).toUpperCase()}. Overwrite deletes all samples for that label, then starts fresh.`;
+          }
+          if (duplicateLabelModal) duplicateLabelModal.classList.remove('hidden');
+        }
+
+        if (duplicateLabelCancel) duplicateLabelCancel.addEventListener('click', closeDuplicateModal);
+        if (duplicateLabelOverwrite) {
+          duplicateLabelOverwrite.addEventListener('click', () => {
+            const p = duplicatePending;
+            closeDuplicateModal();
+            if (!p) return;
+            send({ type: 'delete_label', mode: p.mode, label: p.label });
+            send({ type: 'start_learning', label: p.label, mode: p.mode });
+          });
+        }
+        if (duplicateLabelModal) {
+          duplicateLabelModal.addEventListener('click', (e) => {
+            if (e.target === duplicateLabelModal) closeDuplicateModal();
+          });
+        }
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          if (!duplicateLabelModal || duplicateLabelModal.classList.contains('hidden')) return;
+          closeDuplicateModal();
+        });
+
+        const startLearn = (mode) => {
+          const label = gestureName.value.trim();
+          if (!label) {
+            updateProgramStatus('Enter a gesture name first.', 'warn');
+            return;
+          }
+          const md = state.snapshot && state.snapshot.modeData && state.snapshot.modeData[mode];
+          const labels = md && Array.isArray(md.labels) ? md.labels : [];
+          if (labels.some((x) => String(x) === String(label))) {
+            openDuplicateModal(label, mode);
+            return;
+          }
+          send({ type: 'start_learning', label, mode });
+        };
+        const stopLearn = () => send({ type: 'stop_learning' });
+        const startOrAddCombo = (mode) => {
+          const label = gestureName.value.trim();
+          if (!label) {
+            updateProgramStatus('Enter a gesture name first.', 'warn');
+            return;
+          }
+          const md = state.snapshot?.modeData?.[mode];
+          const labels = Array.isArray(md?.labels) ? md.labels : [];
+          const exists = labels.some((x) => String(x) === String(label));
+          send({ type: exists ? 'append_learning' : 'start_learning', label, mode });
+        };
+        const startTest = () => send({ type: 'start_testing' });
+        const stopTest = () => send({ type: 'stop_testing' });
+        const stopTrain = () => send({ type: 'stop_training' });
+        const toggleLearn = (mode) => {
+          const snap = state.snapshot;
+          if (snap?.learning && (snap.activeModel || state.activeModel) === mode) {
+            stopLearn();
+            return;
+          }
+          startLearn(mode);
+        };
+        const toggleTest = () => {
+          if (state.snapshot?.testing) stopTest();
+          else startTest();
+        };
+        const toggleTrain = (mode) => {
+          const snap = state.snapshot;
+          const active = snap?.activeModel || state.activeModel;
+          if (snap?.training && active === mode) {
+            stopTrain();
+            return;
+          }
+          const up = String(mode).toUpperCase();
+          updateProgramStatus(`Training ${up} on collected samples — please wait…`, 'good');
+          send({ type: 'train', mode });
+        };
+        const exportMode = (mode) => send({ type: 'export', mode });
+        const saveMode = (mode) => () => send({ type: 'save', mode });
+        const loadMode = (mode) => () => send({ type: 'load', mode });
+        const reset = (mode) => send({ type: 'reset', mode });
+
+        buttons.startLearnKnn.addEventListener('click', () => {
+          const snap = state.snapshot;
+          if (snap?.recognitionMode === 'combo' && (snap.activeModel || state.activeModel) === 'knn' && !snap.learning) startOrAddCombo('knn');
+          else toggleLearn('knn');
+        });
+        buttons.startTestKnn.addEventListener('click', toggleTest);
+        buttons.saveKnn.addEventListener('click', saveMode('knn'));
+        buttons.loadKnn.addEventListener('click', loadMode('knn'));
+        buttons.exportKnn.addEventListener('click', () => exportMode('knn'));
+        buttons.importKnn.addEventListener('click', () => fileImport.click());
+        buttons.resetKnn.addEventListener('click', () => reset('knn'));
+
+        buttons.startLearnMlp.addEventListener('click', () => toggleLearn('mlp'));
+        recordNoneBtns.forEach((b) => b.addEventListener('click', () => send({ type: 'record_negative', mode: state.activeModel })));
+        evaluateBtns.forEach((b) => b.addEventListener('click', () => send({ type: 'evaluate', mode: state.activeModel })));
+        buttons.trainMlp.addEventListener('click', () => toggleTrain('mlp'));
+        buttons.startTestMlp.addEventListener('click', toggleTest);
+        buttons.saveMlp.addEventListener('click', saveMode('mlp'));
+        buttons.loadMlp.addEventListener('click', loadMode('mlp'));
+        buttons.exportMlp.addEventListener('click', () => exportMode('mlp'));
+        buttons.importMlp.addEventListener('click', () => fileImport.click());
+        buttons.resetMlp.addEventListener('click', () => reset('mlp'));
+
+        buttons.startLearnLstm.addEventListener('click', () => {
+          const snap = state.snapshot;
+          if (snap?.recognitionMode === 'combo' && (snap.activeModel || state.activeModel) === 'lstm' && !snap.learning) startOrAddCombo('lstm');
+          else toggleLearn('lstm');
+        });
+        buttons.trainLstm.addEventListener('click', () => toggleTrain('lstm'));
+        buttons.startTestLstm.addEventListener('click', toggleTest);
+        buttons.saveLstm.addEventListener('click', saveMode('lstm'));
+        buttons.loadLstm.addEventListener('click', loadMode('lstm'));
+        buttons.exportLstm.addEventListener('click', () => exportMode('lstm'));
+        buttons.importLstm.addEventListener('click', () => fileImport.click());
+        buttons.resetLstm.addEventListener('click', () => reset('lstm'));
+
+        fileImport.addEventListener('change', async () => {
+          const file = fileImport.files && fileImport.files[0];
+          if (file) await importFile(file);
+          fileImport.value = '';
+        });
+
+        document.addEventListener('click', (event) => {
+          const delLabel = event.target.closest('[data-delete-label]');
+          if (delLabel) {
+            const label = delLabel.getAttribute('data-delete-label');
+            if (label) send({ type: 'delete_label', mode: state.activeModel, label });
+          }
+        });
+
+        [detectWidthSelect, maxFpsSelect].forEach((sel) => sel.addEventListener('change', applyConfigFromInputs));
+        [configCountEl, thresholdInput, sequenceFramesInput, countdownInput, batchInput].forEach((input) => {
+          input.addEventListener('input', applyConfigFromInputs);
+        });
+        gestureName.addEventListener('input', refreshComboLearnCaptions);
+
+        document.querySelectorAll('.tile').forEach(tile => {
+          tile.addEventListener('click', () => {
+            const input = tile.querySelector('input');
+            if (!input || tile.classList.contains('hidden')) return;
+            input.checked = true;
+            const group = tile.getAttribute('data-radio-group');
+            if (group === 'recognitionMode') {
+              state.recognitionMode = input.value;
+            } else if (group === 'handMode') {
+              state.handMode = input.value;
+            } else if (group === 'modelMode') {
+              state.activeModel = input.value;
+            }
+            state.configChangedAt = Date.now();
+            syncTiles();
+            updateVisiblePanels();
+            refreshComboLearnCaptions();
+            applyConfigFromInputs();
+          });
+        });
+      }
+
+      function initTiles() {
+        const setChecked = (selector, value) => {
+          document.querySelectorAll(selector).forEach(el => {
+            const input = el.querySelector('input');
+            if (input) input.checked = input.value === value;
+          });
+        };
+        setChecked('#handModeTiles .tile', 'right');
+        setChecked('#recognitionModeTiles .tile', 'single');
+        setChecked('#modelModeTiles .tile', 'knn');
+        syncTiles();
+      }
+
+      function init() {
+        resetLocalCamera();
+        initTiles();
+        bindButtonHandlers();
+        updateVisiblePanels();
+        const snap = state.snapshot;
+        if (comboStatus) comboStatus.textContent = '';
+        syncWebcamButton();
+        updateProgramStatus('Ready.', 'good', { fromServer: true });
+        connectSocket();
+        window.addEventListener('beforeunload', () => {
+          if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+            try {
+              state.socket.send(JSON.stringify({ type: 'stop_camera' }));
+            } catch (_) { /* page unloading */ }
+          }
+          resetLocalCamera();
+        });
+        window.addEventListener('pagehide', () => resetLocalCamera());
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
